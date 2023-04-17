@@ -265,6 +265,8 @@ typedef struct
     int i_ssim_cnt;
 } x264_frame_stat_t;
 
+
+//x264所有的状态
 struct x264_t
 {
     /* encoder parameters */

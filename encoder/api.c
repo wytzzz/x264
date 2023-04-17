@@ -55,6 +55,8 @@ int  x264_10_encoder_maximum_delayed_frames( x264_t * );
 void x264_10_encoder_intra_refresh( x264_t * );
 int  x264_10_encoder_invalidate_reference( x264_t *, int64_t pts );
 
+
+//API接口
 typedef struct x264_api_t
 {
     /* Internal reference to x264_t data */
@@ -79,6 +81,7 @@ static x264_api_t *encoder_open( x264_param_t *param )
     if( !api )
         return NULL;
 
+    //初始化API函数指针
     if( HAVE_BITDEPTH8 && param->i_bitdepth == 8 )
     {
         api->nal_encode = x264_8_nal_encode;
@@ -94,6 +97,7 @@ static x264_api_t *encoder_open( x264_param_t *param )
 
         api->x264 = x264_8_encoder_open( param );
     }
+    //
     else if( HAVE_BITDEPTH10 && param->i_bitdepth == 10 )
     {
         api->nal_encode = x264_10_nal_encode;

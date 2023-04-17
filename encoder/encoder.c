@@ -470,6 +470,7 @@ static int validate_parameters( x264_t *h, int b_open )
     }
 #endif
 
+    //宽高合理性
     if( h->param.i_width <= 0 || h->param.i_height <= 0 )
     {
         x264_log( h, X264_LOG_ERROR, "invalid width x height (%dx%d)\n",
@@ -507,6 +508,7 @@ static int validate_parameters( x264_t *h, int b_open )
         return -1;
     }
 
+    //宽高对齐检查
     int w_mod = 1;
     int h_mod = 1 << (PARAM_INTERLACED || h->param.b_fake_interlaced);
     if( i_csp == X264_CSP_I400 )
@@ -535,6 +537,7 @@ static int validate_parameters( x264_t *h, int b_open )
         return -1;
     }
 
+    //crop检查
     if( h->param.crop_rect.i_left   >= h->param.i_width ||
         h->param.crop_rect.i_right  >= h->param.i_width ||
         h->param.crop_rect.i_top    >= h->param.i_height ||
@@ -546,6 +549,7 @@ static int validate_parameters( x264_t *h, int b_open )
                   h->param.crop_rect.i_top, h->param.crop_rect.i_right,  h->param.crop_rect.i_bottom );
         return -1;
     }
+
     if( h->param.crop_rect.i_left % w_mod || h->param.crop_rect.i_right  % w_mod ||
         h->param.crop_rect.i_top  % h_mod || h->param.crop_rect.i_bottom % h_mod )
     {
@@ -1469,7 +1473,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
         x264_log( h, X264_LOG_ERROR, "unable to initialize threading\n" );
         goto fail;
     }
-
+    //检查输入参数
     if( validate_parameters( h, 1 ) < 0 )
         goto fail;
 
