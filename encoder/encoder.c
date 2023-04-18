@@ -501,6 +501,7 @@ static int validate_parameters( x264_t *h, int b_open )
         return -1;
     }
 #endif
+    //颜色空间
     if( i_csp <= X264_CSP_NONE || i_csp >= X264_CSP_MAX )
     {
         x264_log( h, X264_LOG_ERROR, "invalid CSP (only I400/I420/YV12/NV12/NV21/I422/YV16/NV16/YUYV/UYVY/"
@@ -737,6 +738,7 @@ static int validate_parameters( x264_t *h, int b_open )
               { 24000, 1001, 0, 7444, x264_cqm_avci100_1080_4ic, x264_cqm_avci100_1080p_8iy }}}
         };
 
+
         int res = -1;
         if( i_csp >= X264_CSP_I420 && i_csp < X264_CSP_I422 && !type )
         {
@@ -862,6 +864,7 @@ static int validate_parameters( x264_t *h, int b_open )
         }
     }
 
+
     h->param.rc.f_rf_constant = x264_clip3f( h->param.rc.f_rf_constant, -QP_BD_OFFSET, 51 );
     h->param.rc.f_rf_constant_max = x264_clip3f( h->param.rc.f_rf_constant_max, -QP_BD_OFFSET, 51 );
     h->param.rc.i_qp_constant = x264_clip3( h->param.rc.i_qp_constant, -1, QP_MAX );
@@ -873,6 +876,7 @@ static int validate_parameters( x264_t *h, int b_open )
         h->param.rc.i_qp_constant = h->param.rc.f_rf_constant + QP_BD_OFFSET;
         h->param.rc.i_bitrate = 0;
     }
+    //无损编码?
     if( b_open && (h->param.rc.i_rc_method == X264_RC_CQP || h->param.rc.i_rc_method == X264_RC_CRF)
         && h->param.rc.i_qp_constant == 0 )
     {
@@ -894,8 +898,11 @@ static int validate_parameters( x264_t *h, int b_open )
         if( !h->param.b_cabac && h->param.analyse.i_subpel_refine < 6 )
             h->param.analyse.b_transform_8x8 = 0;
     }
+
+    //CQP编码模式
     if( h->param.rc.i_rc_method == X264_RC_CQP )
     {
+
         float qp_p = h->param.rc.i_qp_constant;
         float qp_i = qp_p - 6*log2f( h->param.rc.f_ip_factor );
         float qp_b = qp_p + 6*log2f( h->param.rc.f_pb_factor );
@@ -911,10 +918,13 @@ static int validate_parameters( x264_t *h, int b_open )
         h->param.rc.b_mb_tree = 0;
         h->param.rc.i_bitrate = 0;
     }
+
     h->param.rc.i_qp_max = x264_clip3( h->param.rc.i_qp_max, 0, QP_MAX );
     h->param.rc.i_qp_min = x264_clip3( h->param.rc.i_qp_min, 0, h->param.rc.i_qp_max );
     h->param.rc.i_qp_step = x264_clip3( h->param.rc.i_qp_step, 2, QP_MAX );
     h->param.rc.i_bitrate = x264_clip3( h->param.rc.i_bitrate, 0, 2000000 );
+
+    //ABR
     if( h->param.rc.i_rc_method == X264_RC_ABR && !h->param.rc.i_bitrate )
     {
         x264_log( h, X264_LOG_ERROR, "bitrate not specified\n" );
@@ -925,12 +935,14 @@ static int validate_parameters( x264_t *h, int b_open )
     h->param.rc.f_vbv_buffer_init = x264_clip3f( h->param.rc.f_vbv_buffer_init, 0, 2000000 );
     if( h->param.rc.i_vbv_buffer_size )
     {
+        //CQP不需要buffer
         if( h->param.rc.i_rc_method == X264_RC_CQP )
         {
             x264_log( h, X264_LOG_WARNING, "VBV is incompatible with constant QP, ignored.\n" );
             h->param.rc.i_vbv_max_bitrate = 0;
             h->param.rc.i_vbv_buffer_size = 0;
         }
+
         else if( h->param.rc.i_vbv_max_bitrate == 0 )
         {
             if( h->param.rc.i_rc_method == X264_RC_ABR )
@@ -1477,6 +1489,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
     if( validate_parameters( h, 1 ) < 0 )
         goto fail;
 
+    //x264_cqm_parse_file函数的作用是将用户自定义的量化矩阵文件解析成x264编码器内部使用的矩阵格式，并将其加载到编码器中
     if( h->param.psz_cqm_file )
         if( x264_cqm_parse_file( h, h->param.psz_cqm_file ) < 0 )
             goto fail;
@@ -1485,7 +1498,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
         h->param.rc.psz_stat_out = strdup( h->param.rc.psz_stat_out );
     if( h->param.rc.psz_stat_in )
         h->param.rc.psz_stat_in = strdup( h->param.rc.psz_stat_in );
-
+    //约分
     x264_reduce_fraction( &h->param.i_fps_num, &h->param.i_fps_den );
     x264_reduce_fraction( &h->param.i_timebase_num, &h->param.i_timebase_den );
 
@@ -1503,19 +1516,25 @@ x264_t *x264_encoder_open( x264_param_t *param )
         x264_log( h, X264_LOG_ERROR, "Effective timebase denominator %u exceeds H.264 maximum\n", h->param.i_timebase_den );
         goto fail;
     }
-
+    //设置宽高
     set_aspect_ratio( h, &h->param, 1 );
 
+
+    //初始化sps和pps
     x264_sps_init( h->sps, h->param.i_sps_id, &h->param );
     x264_sps_init_scaling_list( h->sps, &h->param );
     x264_pps_init( h->pps, h->param.i_sps_id, &h->param, h->sps );
 
     x264_validate_levels( h, 1 );
 
+
+    //将i_chroma_qp_table进行偏移,获取到实际的qp_table的起始位置
     h->chroma_qp_table = i_chroma_qp_table + 12 + h->pps->i_chroma_qp_index_offset;
 
+    //初始化量化矩阵
     if( x264_cqm_init( h ) < 0 )
         goto fail;
+
 
     h->mb.i_mb_width = h->sps->i_mb_width;
     h->mb.i_mb_height = h->sps->i_mb_height;
@@ -1530,21 +1549,27 @@ x264_t *x264_encoder_open( x264_param_t *param )
     h->mb.b_adaptive_mbaff = PARAM_INTERLACED && h->param.analyse.i_subpel_refine;
 
     /* Init frames. */
+    //用于初始化帧参数和相关变量.
+    //1. 计算delay
+    //如果使用自适应B帧编码（i_bframe_adaptive=X264_B_ADAPT_TRELLIS）并且不使用统计信息（b_stat_read=false），则帧延迟为B帧数的4倍，否则帧延迟为B帧数。
     if( h->param.i_bframe_adaptive == X264_B_ADAPT_TRELLIS && !h->param.rc.b_stat_read )
         h->frames.i_delay = X264_MAX(h->param.i_bframe,3)*4;
     else
         h->frames.i_delay = h->param.i_bframe;
+    //如果启用了宏块树（b_mb_tree）或VBV缓冲区（i_vbv_buffer_size），则考虑i_lookahead的延迟.
     if( h->param.rc.b_mb_tree || h->param.rc.i_vbv_buffer_size )
         h->frames.i_delay = X264_MAX( h->frames.i_delay, h->param.rc.i_lookahead );
+    //计算帧延迟（i_delay）加上线程帧数（i_thread_frames）减1、同步前瞻数（i_sync_lookahead）、可变帧率（b_vfr_input）和B帧延迟（i_bframe_delay）等因素的总和。
     i_slicetype_length = h->frames.i_delay;
     h->frames.i_delay += h->i_thread_frames - 1;
     h->frames.i_delay += h->param.i_sync_lookahead;
     h->frames.i_delay += h->param.b_vfr_input;
     h->frames.i_bframe_delay = h->param.i_bframe ? (h->param.i_bframe_pyramid ? 2 : 1) : 0;
-
+    //设置参考帧数（i_max_ref0和i_max_ref1）和最大DPB大小（i_max_dpb）
     h->frames.i_max_ref0 = h->param.i_frame_reference;
     h->frames.i_max_ref1 = X264_MIN( h->sps->vui.i_num_reorder_frames, h->param.i_frame_reference );
     h->frames.i_max_dpb  = h->sps->vui.i_max_dec_frame_buffering;
+    //如果编码参数中使用了低分辨率编码（b_lowres），则设置标志变量（b_have_lowres）
     h->frames.b_have_lowres = !h->param.rc.b_stat_read
         && ( h->param.rc.i_rc_method == X264_RC_ABR
           || h->param.rc.i_rc_method == X264_RC_CRF
@@ -1553,10 +1578,11 @@ x264_t *x264_encoder_open( x264_param_t *param )
           || h->param.rc.b_mb_tree
           || h->param.analyse.i_weighted_pred );
     h->frames.b_have_lowres |= h->param.rc.b_stat_read && h->param.rc.i_vbv_buffer_size > 0;
+    //如果启用了8x8子块ESA分析（inter & X264_ANALYSE_PSUB8x8），则设置标志变量（b_have_sub8x8_esa）。
     h->frames.b_have_sub8x8_esa = !!(h->param.analyse.inter & X264_ANALYSE_PSUB8x8);
-
-    h->frames.i_last_idr =
-    h->frames.i_last_keyframe = - h->param.i_keyint_max;
+    //初始化帧计数器和相关参数，包括最后的IDR帧（i_last_idr）、最后的关键帧（i_last_keyframe）、输入帧数（i_input）、最大PTS值（i_largest_pts和i_second_largest_pts）
+    //上一个打开GOP的POC值（i_poc_last_open_gop）等
+    h->frames.i_last_idr = h->frames.i_last_keyframe = - h->param.i_keyint_max;
     h->frames.i_input    = 0;
     h->frames.i_largest_pts = h->frames.i_second_largest_pts = -1;
     h->frames.i_poc_last_open_gop = -1;
@@ -1582,25 +1608,38 @@ x264_t *x264_encoder_open( x264_param_t *param )
      * unnecessary thermal throttling and whatnot, so keep it disabled for now. */
     h->param.cpu &= ~X264_CPU_AVX512;
 #endif
+    //初始化Intra16x16帧内预测汇编函数。
     x264_predict_16x16_init( h->param.cpu, h->predict_16x16 );
+    //初始化Intra4x4帧内预测汇编函数。
     x264_predict_8x8c_init( h->param.cpu, h->predict_8x8c );
     x264_predict_8x16c_init( h->param.cpu, h->predict_8x16c );
     x264_predict_8x8_init( h->param.cpu, h->predict_8x8, &h->predict_8x8_filter );
     x264_predict_4x4_init( h->param.cpu, h->predict_4x4 );
+    //初始化像素值计算相关的汇编函数（包括SAD、SATD、SSD等）
     x264_pixel_init( h->param.cpu, &h->pixf );
+    //初始化DCT变换和DCT反变换相关的汇编函数。
     x264_dct_init( h->param.cpu, &h->dctf );
+    //初始化zigzag
     x264_zigzag_init( h->param.cpu, &h->zigzagf_progressive, &h->zigzagf_interlaced );
     memcpy( &h->zigzagf, PARAM_INTERLACED ? &h->zigzagf_interlaced : &h->zigzagf_progressive, sizeof(h->zigzagf) );
+    //初始化运动补偿相关的汇编函数。
     x264_mc_init( h->param.cpu, &h->mc, h->param.b_cpu_independent );
+    //初始化量化表和相关参数
     x264_quant_init( h, h->param.cpu, &h->quantf );
+    //初始化去块效应滤波器相关的汇编函数。
     x264_deblock_init( h->param.cpu, &h->loopf, PARAM_INTERLACED );
+    //初始化比特流缓冲区和相关参数
     x264_bitstream_init( h->param.cpu, &h->bsf );
+    //初始化熵编码的汇编函数
     if( h->param.b_cabac )
         x264_cabac_init( h );
     else
         x264_cavlc_init( h );
-
+    //初始化宏块比较函数和相关参数
+    //宏块比较函数是选择最佳预测模式、最佳运动矢量等的关键函数，需要根据实际情况和需求进行选择和优化。比较参数是影响编码效率和质量的重要参数，需要根据实际情况和需求进行调整。
     mbcmp_init( h );
+    //用于初始化色度处理函数和相关参数
+    //色度处理是H.264/AVC视频编码中的重要环节，对于编码质量和效率有着重要的影响。色度参数是控制色度编码的关键参数，需要根据实际情况和需求进行调整。
     chroma_dsp_init( h );
 
     p = buf + sprintf( buf, "using cpu capabilities:" );

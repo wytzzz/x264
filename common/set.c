@@ -28,6 +28,9 @@
 #define SHIFT(x,s) ((s)<=0 ? (x)<<-(s) : ((x)+(1<<((s)-1)))>>(s))
 #define DIV(n,d) (((n) + ((d)>>1)) / (d))
 
+//在函数内部，首先根据量化参数和视频块大小计算出反量化系数表，
+//然后将该表中的值与输入的量化系数相乘，得到恢复后的变换系数。
+// 最后，将恢复后的变换系数保存到输出缓冲区中。
 static const uint8_t dequant4_scale[6][3] =
 {
     { 10, 13, 16 },
@@ -37,6 +40,8 @@ static const uint8_t dequant4_scale[6][3] =
     { 16, 20, 25 },
     { 18, 23, 29 }
 };
+
+//具体来说，quant4_scale函数的作用是将输入的变换系数除以量化参数，以得到量化后的变换系数
 static const uint16_t quant4_scale[6][3] =
 {
     { 13107, 8066, 5243 },
@@ -70,6 +75,13 @@ static const uint16_t quant8_scale[6][6] =
     {  7282,  6428, 11570,  6830,  9118,  8640 }
 };
 
+
+//x264_cqm_init函数是H.264/AVC视频编码器x264中的一个函数，用于初始化量化矩阵。量化矩阵是用于量化视频中的变换系数的矩阵，它可以影响视频的压缩效率和质量。
+//在H.264/AVC标准中，有两个量化矩阵：一个是亮度量化矩阵，另一个是色度量化矩阵。这两个量化矩阵可以通过量化参数表和量化矩阵扫描模式来计算出来。
+//x264_cqm_init函数的作用就是初始化这两个量化矩阵。具体来说，该函数会根据编码器的参数设置，计算出亮度量化矩阵和色度量化矩阵，并将结果保存在编码器的上下文结构体中。
+//在初始化亮度量化矩阵时，函数会先根据量化参数表计算出一个亮度量化矩阵，然后根据量化矩阵扫描模式进行重排，最终得到一个与扫描模式对应的亮度量化矩阵。
+//在初始化色度量化矩阵时，函数会先计算出一组色度量化参数，然后根据这些参数计算出色度量化矩阵。这个色度量化矩阵是由亮度量化矩阵和色度量化参数计算得到的。
+//总的来说，x264_cqm_init函数的作用是为H.264/AVC视频编码器计算并初始化亮度量化矩阵和色度量化矩阵，以便在编码视频时使用
 int x264_cqm_init( x264_t *h )
 {
     int def_quant4[6][16];
@@ -124,6 +136,8 @@ int x264_cqm_init( x264_t *h )
         }\
     }
 
+    //具体来说，CQM_ALLOC宏定义用于创建一个二维数组，用于存储量化矩阵的值。该宏定义的参数包括矩阵的维度和矩阵的类型，如亮度量化矩阵或色度量化矩阵。
+    // 宏定义会根据矩阵的维度和类型来计算需要分配的内存大小，并使用x264_malloc函数在堆上分配所需大小的内存空间。分配完成后，该宏定义会将指向分配空间的指针返回给调用者
     CQM_ALLOC( 4, 4 )
     CQM_ALLOC( 8, num_8x8_lists )
 
@@ -344,6 +358,8 @@ static int cqm_parse_jmlist( x264_t *h, const char *buf, const char *name,
     return 0;
 }
 
+
+//解析用户量化矩阵
 int x264_cqm_parse_file( x264_t *h, const char *filename )
 {
     char *p;
@@ -361,6 +377,7 @@ int x264_cqm_parse_file( x264_t *h, const char *filename )
     while( (p = strchr( buf, '#' )) != NULL )
         memset( p, ' ', strcspn( p, "\n" ) );
 
+    //分别解析4x4 8x8的亮度/色度量化参数.
     b_error |= cqm_parse_jmlist( h, buf, "INTRA4X4_LUMA",   h->param.cqm_4iy, x264_cqm_jvt4i, 16 );
     b_error |= cqm_parse_jmlist( h, buf, "INTER4X4_LUMA",   h->param.cqm_4py, x264_cqm_jvt4p, 16 );
     b_error |= cqm_parse_jmlist( h, buf, "INTRA4X4_CHROMA", h->param.cqm_4ic, x264_cqm_jvt4i, 16 );

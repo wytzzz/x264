@@ -55,12 +55,17 @@
  * Macros
  ****************************************************************************/
 #define X264_PCM_COST (FRAME_SIZE(256*BIT_DEPTH)+16)
+//QP_BD_OFFSET (6*(BIT_DEPTH-8))：该宏定义计算了量化参数的偏移量，其中BIT_DEPTH表示视频的位深度。在H.264/AVC中，量化参数的取值范围为0~51，
+//但是在高位深度的视频中，需要对取值范围进行调整。QP_BD_OFFSET的计算公式是6*(BIT_DEPTH-8)，其中BIT_DEPTH-8表示位深度与8的差值，乘以6后得到偏移量。
 #define QP_BD_OFFSET (6*(BIT_DEPTH-8))
+//QP_MAX_SPEC (51+QP_BD_OFFSET)：该宏定义表示量化参数的最大值，包括偏移量QP_BD_OFFSET。因为量化参数的取值范围为0~51，所以QP_MAX_SPEC的值为51+QP_BD_OFFSET。
 #define QP_MAX_SPEC (51+QP_BD_OFFSET)
+//量化参数的取值范围实际上为0~69，其中QP_MAX的值为QP_MAX_SPEC+18。
 #define QP_MAX (QP_MAX_SPEC+18)
 #define PIXEL_MAX ((1 << BIT_DEPTH)-1)
 // arbitrary, but low because SATD scores are 1/4 normal
 #define X264_LOOKAHEAD_QP (12+QP_BD_OFFSET)
+//量化参数
 #define SPEC_QP(x) X264_MIN((x), QP_MAX_SPEC)
 
 #define NALU_OVERHEAD 5 // startcode + NAL type costs 5 bytes per frame
@@ -649,19 +654,22 @@ struct x264_t
         } cache;
 
         /* */
-        int     i_qp;       /* current qp */
-        int     i_chroma_qp;
-        int     i_last_qp;  /* last qp */
-        int     i_last_dqp; /* last delta qp */
-        int     b_variable_qp; /* whether qp is allowed to vary per macroblock */
-        int     b_lossless;
+        int     i_qp;       /* 当前帧的量化参数（quantization parameter），用于控制编码时的失真量和码率。量化参数越小，编码后的码流质量越高，但是需要更大的码率；
+ *                              量化参数越大，编码后的码流质量越低，但是需要更小的码率。current qp */
+        int     i_chroma_qp; //色度分量的量化参数，用于控制色度分量的压缩质量和码率。通常情况下，色度分量的量化参数比亮度分量的量化参数稍大，以保证图像的色彩保真度
+        int     i_last_qp;  /*一帧的量化参数，用于参考和比较当前帧的量化参数。编码器可以根据这个参数来调整当前帧的量化参数，以保持编码质量的稳定性和一致性 last qp */
+        int     i_last_dqp; /* 上一帧的量化参数变化量，即上一帧的量化参数与前一帧的量化参数之差，用于参考和比较当前帧的量化参数变化量。
+ *                          编码器可以根据这个参数来调整当前帧的量化参数变化量，以保持编码质量的稳定性和一致性last delta qp */
+        int     b_variable_qp; /* 是否允许在宏块级别上使用可变量化量化参数（variable quantization parameter，VQP）。
+ *                              VQP是一种在宏块级别上调整量化参数的技术，可以提高编码质量和码率控制性能，但是需要更多的计算量。whether qp is allowed to vary per macroblock */
+        int     b_lossless; //是否启用无损编码模式。无损编码模式是一种不会引入任何失真的视频编码模式，可以保证视频质量的完整性和保真度，但是需要更大的码率和存储空间。
         int     b_direct_auto_read; /* take stats for --direct auto from the 2pass log */
         int     b_direct_auto_write; /* analyse direct modes, to use and/or save */
 
         /* lambda values */
         int     i_trellis_lambda2[2][2]; /* [luma,chroma][inter,intra] */
         int     i_psy_rd_lambda;
-        int     i_chroma_lambda2_offset;
+        int     i_chroma_lambda2_offset; //色度分量的Lambda参数偏移量，用于调整色度分量的码率控制性能和编码质量。
 
         /* B_direct and weighted prediction */
         int16_t dist_scale_factor_buf[2][2][X264_REF_MAX*2][4];

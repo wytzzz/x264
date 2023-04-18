@@ -246,6 +246,7 @@ static const uint16_t block_idx_xy_fdec[16] =
 };
 
 #define QP(qP) ( (qP)+QP_BD_OFFSET )
+//色度QP表
 static const uint8_t i_chroma_qp_table[QP_MAX+1+12*2] =
 {
          0,      0,      0,      0,      0,      0,

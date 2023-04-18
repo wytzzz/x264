@@ -306,7 +306,7 @@ typedef struct x264_param_t
     /* Video Properties */
     int         i_width;
     int         i_height;
-    int         i_csp;         /* CSP of encoded bitstream 源视频的色彩空间*/
+    int         i_csp;         /*源视频的色彩空间  CSP of encoded bitstream */
     int         i_bitdepth;
     int         i_level_idc; //输出比特流的级别。级别定义了视频的一些限制，如比特率、帧率、分辨率、宏块数量、图像缓冲区大小等。级别越高，视频的限制就越严格，编码后的视频质量就越好。
     int         i_frame_total; /* number of frames to encode if known, else 0 需要编码的总帧数*/
@@ -340,7 +340,7 @@ typedef struct x264_param_t
     int         i_frame_reference;  /* Maximum number of reference frames 最大参考帧数量*/
     int         i_dpb_size;         /* Force a DPB size larger than that implied by B-frames and reference frames.
                                      * Useful in combination with interactive error resilience. */
-    int         i_keyint_max;       /* Force an IDR keyframe at this interval 关键帧的最大间隔。*/
+    int         i_keyint_max;       /* 关键帧的最大间隔 Force an IDR keyframe at this interval*/
     int         i_keyint_min;       /* Scenecuts closer together than this are coded as I, not IDR. 关键帧的最小间隔*/
     int         i_scenecut_threshold; /* how aggressively to insert extra I frames */
     int         b_intra_refresh;    /* Whether or not to use periodic intra refresh instead of IDR frames. */
@@ -350,22 +350,27 @@ typedef struct x264_param_t
     int         i_bframe_bias;//在判断当前帧类型时，对 B 帧的偏好程度。当此选项设置为正数时，编码器更倾向于选择 B 帧，而当此选项设置为负数时，编码器更倾向于选择 P 帧
     int         i_bframe_pyramid;   /* Keep some B-frames as references: 0=off, 1=strict hierarchical, 2=normal */
     int         b_open_gop;
-    int         b_bluray_compat;
-    int         i_avcintra_class;
-    int         i_avcintra_flavor;
+    int         b_bluray_compat;  //示是否启用蓝光兼容（Blu-ray compatibility）模式。
+    int         i_avcintra_class; //表示AVC-Intra编码的级别（Class）。AVC-Intra是一种高清视频编码标准，它采用H.264/AVC编码算法，支持多种编码级别和配置
+    int         i_avcintra_flavor; //表示AVC-Intra编码的风格（Flavor）。AVC-Intra编码的风格是指编码参数的一组配置，包括GOP大小、码率、颜色空间等，不同的风格对应着不同的视频质量和适用场景
 
     int         b_deblocking_filter; //是否启用去块滤波器。去块滤波器是一种用于减少压缩图像中块边缘伪影的滤波器。
     int         i_deblocking_filter_alphac0;    /* [-6, 6] -6 light filter, 6 strong 去块滤波器的 alpha 偏移参数。*/
     int         i_deblocking_filter_beta;       /* [-6, 6]  idem */
+                //cabac
+    int         b_cabac;    //表示编码器是否使用上下文自适应二元算术编码（Context-Adaptive Binary Arithmetic Coding，CABAC）进行熵编码。
+                            // 如果值为1，表示编码器使用CABAC编码；如果值为0，表示编码器使用上下文自适应变长编码（Context-Adaptive
+    int         i_cabac_init_idc; //表示CABAC编码器的初始化上下文模型。参数的值为0、1或2，分别表示使用默认、低、中等初始化上下文模型。这个参数只在使用CABAC编码时有效。
 
-    int         b_cabac;
-    int         i_cabac_init_idc;
+    int         b_interlaced; //1个布尔值，表示编码的视频是否是隔行扫描的。如果值为1，表示编码的视频是隔行扫描的；如果值为0，则表示编码的视频是逐行扫描的
+    int         b_constrained_intra; // 表示编码器是否使用限制内部预测（Constrained Intra Prediction，CIP）模式。如果值为1，表示编码器只使用内部预测模式进行帧间编码，而不使用帧间预测模式。
+                                     // 这种编码方式可以提高编码后视频的容错性，但会降低编码效率。如果值为0，则表示编码器可以使用任意的预测模式进行编码。
 
-    int         b_interlaced;
-    int         b_constrained_intra;
+    int         i_cqm_preset; //: 量化矩阵预设值的参数，用于指定使用哪种预定义的量化矩阵或者用户自定义的量化矩阵。可以是以下值之一：X264_CQM_NONE、X264_CQM_FLAT、X264_CQM_JVT、X264_CQM_CUSTOM。
+    char        *psz_cqm_file;      /* 自定义量化矩阵文件的文件名，用于指定用户自定义的量化矩阵文件的名称。filename (in UTF-8) of CQM file, JM format */
 
-    int         i_cqm_preset;
-    char        *psz_cqm_file;      /* filename (in UTF-8) of CQM file, JM format */
+    /*量化矩阵数据，用于存储对应尺寸的量化矩阵。其中，cqm_4iy、cqm_4py、cqm_4ic、cqm_4pc分别对应4x4尺寸的亮度、亮度平均值、色度、色度平均值的量化矩阵，
+     * cqm_8iy、cqm_8py、cqm_8ic、cqm_8pc分别对应8x8尺寸的量化矩阵。这些量化矩阵数据在预定义矩阵中有默认值，在自定义矩阵中则需要用户自行指定。*/
     uint8_t     cqm_4iy[16];        /* used only if i_cqm_preset == X264_CQM_CUSTOM */
     uint8_t     cqm_4py[16];
     uint8_t     cqm_4ic[16];
@@ -396,10 +401,10 @@ typedef struct x264_param_t
         int          i_chroma_qp_offset; //色度量化参数偏移量。
 
         int          i_me_method; /* motion estimation algorithm to use (X264_ME_*) 运动估计算法（X264_ME_*）*/
-        int          i_me_range; /* integer pixel motion estimation search range (from predicted mv) 整像素运动估计搜索范围（根据预测运动矢量*/
+        int          i_me_range; /* 整像素运动估计搜索范围（根据预测运动矢量) integer pixel motion estimation search range (from predicted mv) */
         int          i_mv_range; /* maximum length of a mv (in pixels). -1 = auto, based on level 运动矢量的最大长度（以像素为单位）。-1=自动，根据级别确定。*/
         int          i_mv_range_thread; /* minimum space between threads. -1 = auto, based on number of threads. */
-        int          i_subpel_refine; /* subpixel motion estimation quality 子像素运动估计质量*/
+        int          i_subpel_refine; /* 子像素运动估计质量 subpixel motion estimation quality */
         int          b_chroma_me; /* chroma ME for subpel and mode decision in P-frames P帧中色度运动估计和模式决策*/
         int          b_mixed_references; /* allow each mb partition to have its own reference number 允许每个宏块分区有自己的参考帧编号*/
         int          i_trellis;  /* trellis RD quantization Trellis RD量化*/
@@ -448,13 +453,22 @@ typedef struct x264_param_t
         int         i_aq_mode;      /*采用的自适应QP方法，可以是X264_AQ_*中的一个常量 psy adaptive QP. (X264_AQ_*) 。*/
         float       f_aq_strength;  /*自适应QP的强度*/
         int         b_mb_tree;      /*是否启用宏块树率控 Macroblock-tree ratecontrol. */
-        int         i_lookahead; //预测帧的数量
+        int         i_lookahead; //向前预测帧的数量
 
         /* 2pass */
+        /*
+         * 通过设置psz_stat_out参数，用户可以让编码器在编码过程中生成状态文件，以便后续的续编或者分析。通过设置psz_stat_in参数，
+         * 用户可以让编码器在续编时读取状态文件，从上一次编码的状态恢复并继续编码，而不是从头开始编码。
+         * 这些参数为编码器提供了更灵活的编码控制和管理方式。
+         * */
         int         b_stat_write;   /* Enable stat writing in psz_stat_out 是否启用第二遍统计并写入统计数据*/
-        char        *psz_stat_out;  /* output filename (in UTF-8) of the 2pass stats file 第二遍统计数据输出文件名*/
-        int         b_stat_read;    /* Read stat from psz_stat_in and use it 是否从文件中读取统计数据*/
-        char        *psz_stat_in;   /* input filename (in UTF-8) of the 2pass stats file */
+        char        *psz_stat_out;  /* 编码器的状态文件输出路径，用于指定编码器在编码过程中生成的状态文件的保存路径。
+                                     * 状态文件包含了编码器在编码过程中的各种状态信息，可以用于后续的编码过程的续编或者分析。
+                                     * 如果该参数为NULL，则不会生成状态文件output filename (in UTF-8) of the 2pass stats file */
+        int         b_stat_read;    /* 是否从文件中读取统计数据 Read stat from psz_stat_in and use it */
+        char        *psz_stat_in;   /* 编码器的状态文件输入路径，用于指定编码器在续编（即从上一次编码的状态恢复并继续编码）时读取状态文件的路径。
+ *                                     如果该参数为NULL，则编码器不会进行续编，而是从头开始进行编码。
+ *                                     input filename (in UTF-8) of the 2pass stats file */
 
         /* 2pass params (same as ffmpeg ones) */
         float       f_qcompress;    /* 0.0 => cbr, 1.0 => constant qp */

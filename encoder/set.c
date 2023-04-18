@@ -98,54 +98,78 @@ void x264_sei_write( bs_t *s, uint8_t *payload, int payload_size, int payload_ty
     bs_flush( s );
 }
 
+//初始化sps
 void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
 {
-    int csp = param->i_csp & X264_CSP_MASK;
 
+    //颜色空间
+    int csp = param->i_csp & X264_CSP_MASK;
     sps->i_id = i_id;
     sps->i_mb_width = ( param->i_width + 15 ) / 16;
     sps->i_mb_height= ( param->i_height + 15 ) / 16;
     sps->b_frame_mbs_only = !(param->b_interlaced || param->b_fake_interlaced);
     if( !sps->b_frame_mbs_only )
         sps->i_mb_height = ( sps->i_mb_height + 1 ) & ~1;
+    //色度采样格式
     sps->i_chroma_format_idc = csp >= X264_CSP_I444 ? CHROMA_444 :
                                csp >= X264_CSP_I422 ? CHROMA_422 :
                                csp >= X264_CSP_I420 ? CHROMA_420 : CHROMA_400;
 
+    //这段代码是关于H.264/AVC视频编码标准中的Profile参数设置的。Profile参数是指视频编码的配置和操作集合，它定义了编码器和解码器之间必须共享的功能和算法。
+    //如果编码器使用的是恒定质量（Constant Quality，CQP）模式，并且QP值为0，则设置b_qpprime_y_zero_transform_bypass为真，表示使用零变换跳过模式。这种模式将直接传递原始像素值，而不进行DCT变换，可以提高编码效率。
     sps->b_qpprime_y_zero_transform_bypass = param->rc.i_rc_method == X264_RC_CQP && param->rc.i_qp_constant == 0;
+    //如果使用零变换跳过模式或者色度格式为4:4:4，则设置i_profile_idc为PROFILE_HIGH444_PREDICTIVE，表示使用高级4:4:4预测配置。
     if( sps->b_qpprime_y_zero_transform_bypass || sps->i_chroma_format_idc == CHROMA_444 )
         sps->i_profile_idc  = PROFILE_HIGH444_PREDICTIVE;
+    //如果色度格式为4:2:2，则设置i_profile_idc为PROFILE_HIGH422，表示使用高级4:2:2配置
     else if( sps->i_chroma_format_idc == CHROMA_422 )
         sps->i_profile_idc  = PROFILE_HIGH422;
+    //如果编码器的位深度大于8位，则设置i_profile_idc为PROFILE_HIGH10，表示使用高级10位配置。
     else if( BIT_DEPTH > 8 )
         sps->i_profile_idc  = PROFILE_HIGH10;
+    //如果使用8x8变换、量化矩阵不为默认值、色度格式为4:0:0或者使用了加权预测，则设置i_profile_idc为PROFILE_HIGH，表示使用高级配置。
     else if( param->analyse.b_transform_8x8 || param->i_cqm_preset != X264_CQM_FLAT || sps->i_chroma_format_idc == CHROMA_400 )
         sps->i_profile_idc  = PROFILE_HIGH;
+    //如果使用了CABAC编码、B帧数大于0、隔行扫描、假隔行扫描或者使用了加权预测，则设置i_profile_idc为PROFILE_MAIN，表示使用主要配置。
     else if( param->b_cabac || param->i_bframe > 0 || param->b_interlaced || param->b_fake_interlaced || param->analyse.i_weighted_pred > 0 )
         sps->i_profile_idc  = PROFILE_MAIN;
+    //如果以上条件都不满足，则设置i_profile_idc为PROFILE_BASELINE，表示使用基本配置。
     else
         sps->i_profile_idc  = PROFILE_BASELINE;
 
+    //这段代码是关于Profile参数约束集合（Constrained Set）的设置。Constrained Set是指在一个Profile参数下，为了兼容性和互操作性，编码器和解码器需要遵守的一些限制和规则。
+    //在这段代码中，编码器根据Profile参数的值和一些其他条件来设置Constrained Set参数。具体来说：
+    //如果使用的是基本配置，则设置b_constraint_set0为真，表示使用了基本约束集合。
     sps->b_constraint_set0  = sps->i_profile_idc == PROFILE_BASELINE;
     /* x264 doesn't support the features that are in Baseline and not in Main,
      * namely arbitrary_slice_order and slice_groups. */
     sps->b_constraint_set1  = sps->i_profile_idc <= PROFILE_MAIN;
     /* Never set constraint_set2, it is not necessary and not used in real world. */
+    //不使用Constrained Set 2，因为它在实际中没有被使用。
     sps->b_constraint_set2  = 0;
     sps->b_constraint_set3  = 0;
+    //如果使用的是主要、高级10位或更高的配置，并且编码的视频只使用帧内编码，则设置b_constraint_set4为真，表示使用了约束集合4。
     sps->b_constraint_set4  = sps->i_profile_idc >= PROFILE_MAIN && sps->i_profile_idc <= PROFILE_HIGH10 && sps->b_frame_mbs_only;
+    //如果使用的是主要或高级配置，并且没有使用B帧，则设置b_constraint_set5为真，表示使用了约束集合5。
     sps->b_constraint_set5  = (sps->i_profile_idc == PROFILE_MAIN || sps->i_profile_idc == PROFILE_HIGH) && param->i_bframe == 0;
 
+    //设置i_level_idc参数为param->i_level_idc，表示使用指定的级别。
     sps->i_level_idc = param->i_level_idc;
+    //如果使用的是1b级别的基本或主要配置，则设置b_constraint_set3为真，并将i_level_idc设置为11。
     if( param->i_level_idc == 9 && ( sps->i_profile_idc == PROFILE_BASELINE || sps->i_profile_idc == PROFILE_MAIN ) )
     {
         sps->b_constraint_set3 = 1; /* level 1b with Baseline or Main profile is signalled via constraint_set3 */
         sps->i_level_idc      = 11;
     }
     /* Intra profiles */
+    //如果i_keyint_max为1且使用的是高级配置，则设置b_constraint_set3为真，表示使用了约束集合3。
     if( param->i_keyint_max == 1 && sps->i_profile_idc >= PROFILE_HIGH )
         sps->b_constraint_set3 = 1;
 
+    //这段代码是用于初始化H.264/AVC视频编码器的序列参数集（SPS）相关的各种参数。SPS包含了视频序列的信息，例如帧大小、帧率、比特率以及其他解码视频所需的参数。
+    //其中一些关键参数包括参考帧的数量、最大帧缓冲、重排序帧的数量、图片顺序计数（POC）类型、颜色空间和格式以及时间信息。
+    //代码还设置了一些位流的限制，例如每帧最大字节数的分母、每宏块最大比特数的分母以及最大运动矢量长度。这些限制用于控制输出位流的大小，并确保与H.264/AVC标准相兼容。
+    //总体而言，这段代码是视频编码器的重要组成部分，有助于确保编码后的视频与其他H.264/AVC解码器和播放器兼容。
     sps->vui.i_num_reorder_frames = param->i_bframe_pyramid ? 2 : param->i_bframe ? 1 : 0;
     /* extra slot with pyramid so that we don't have to override the
      * order of forgetting old pictures */
@@ -265,6 +289,7 @@ void x264_sps_init_reconfigurable( x264_sps_t *sps, x264_param_t *param )
     }
 }
 
+//初始化qp scale
 void x264_sps_init_scaling_list( x264_sps_t *sps, x264_param_t *param )
 {
     switch( sps->i_cqm_preset )
@@ -479,8 +504,11 @@ void x264_sps_write( bs_t *s, x264_sps_t *sps )
     bs_flush( s );
 }
 
+
+//初始化pps
 void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *sps )
 {
+
     pps->i_id = i_id;
     pps->i_sps_id = sps->i_id;
     pps->b_cabac = param->b_cabac;
@@ -494,6 +522,7 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
     pps->b_weighted_pred = param->analyse.i_weighted_pred > 0;
     pps->b_weighted_bipred = param->analyse.b_weighted_bipred ? 2 : 0;
 
+    //初始化QP值.
     pps->i_pic_init_qp = param->rc.i_rc_method == X264_RC_ABR || param->b_stitchable ? 26 + QP_BD_OFFSET : SPEC_QP( param->rc.i_qp_constant );
     pps->i_pic_init_qs = 26 + QP_BD_OFFSET;
 
@@ -819,6 +848,7 @@ int x264_sei_avcintra_vanc_write( x264_t *h, bs_t *s, int len )
         x264_log( h, X264_LOG_WARNING, __VA_ARGS__ );\
     ret = 1;\
 }
+
 
 int x264_validate_levels( x264_t *h, int verbose )
 {
