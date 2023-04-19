@@ -1462,6 +1462,7 @@ static void set_aspect_ratio( x264_t *h, x264_param_t *param, int initial )
 /****************************************************************************
  * x264_encoder_open:
  ****************************************************************************/
+ //初始化编码器
 x264_t *x264_encoder_open( x264_param_t *param )
 {
     x264_t *h;
@@ -1674,6 +1675,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
         p += sprintf( p, " none!" );
     x264_log( h, X264_LOG_INFO, "%s\n", buf );
 
+
     if( x264_analyse_init_costs( h ) )
         goto fail;
 
@@ -1699,7 +1701,7 @@ x264_t *x264_encoder_open( x264_param_t *param )
 
     CHECKED_MALLOC( h->reconfig_h, sizeof(x264_t) );
 
-    if( h->param.i_threads > 1 &&
+     if( h->param.i_threads > 1 &&
         x264_threadpool_init( &h->threadpool, h->param.i_threads, (void*)encoder_thread_init, h ) )
         goto fail;
     if( h->param.i_lookahead_threads > 1 &&
@@ -1763,15 +1765,15 @@ x264_t *x264_encoder_open( x264_param_t *param )
     if( h->param.b_opencl && x264_opencl_lookahead_init( h ) < 0 )
         h->param.b_opencl = 0;
 #endif
-
+     //初始化lookahead
     if( x264_lookahead_init( h, i_slicetype_length ) )
         goto fail;
 
     for( int i = 0; i < h->param.i_threads; i++ )
         if( x264_macroblock_thread_allocate( h->thread[i], 0 ) < 0 )
             goto fail;
-
-    if( x264_ratecontrol_new( h ) < 0 )
+     //创建码率控制
+     if( x264_ratecontrol_new( h ) < 0 )
         goto fail;
 
     if( h->param.i_nal_hrd )

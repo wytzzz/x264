@@ -328,7 +328,8 @@ PIXEL_SATD_C( 8,  16, x264_pixel_satd_8x4 )
 PIXEL_SATD_C( 8,  8,  x264_pixel_satd_8x4 )
 PIXEL_SATD_C( 4,  16, x264_pixel_satd_4x4 )
 PIXEL_SATD_C( 4,  8,  x264_pixel_satd_4x4 )
-
+//该函数的输入是两个图像块 pix1 和 pix2，其中每个图像块包含 8 个像素值。函数逐个像素地计算它们之间的差异，并将这些差异值存储在变量 a0~a7 中。
+//函数对每个差异值进行一系列计算，其中包括一个用位运算加速的加法运算和一个哈达玛变换
 static NOINLINE int sa8d_8x8( pixel *pix1, intptr_t i_pix1, pixel *pix2, intptr_t i_pix2 )
 {
     sum2_t tmp[8][4];
@@ -338,6 +339,8 @@ static NOINLINE int sa8d_8x8( pixel *pix1, intptr_t i_pix1, pixel *pix2, intptr_
     {
         a0 = pix1[0] - pix2[0];
         a1 = pix1[1] - pix2[1];
+
+        //位运算加速差值计算
         b0 = (a0+a1) + ((a0-a1)<<BITS_PER_SUM);
         a2 = pix1[2] - pix2[2];
         a3 = pix1[3] - pix2[3];
@@ -348,6 +351,7 @@ static NOINLINE int sa8d_8x8( pixel *pix1, intptr_t i_pix1, pixel *pix2, intptr_
         a6 = pix1[6] - pix2[6];
         a7 = pix1[7] - pix2[7];
         b3 = (a6+a7) + ((a6-a7)<<BITS_PER_SUM);
+        //哈达玛变换（Hadamard transform）来加速计算。
         HADAMARD4( tmp[i][0], tmp[i][1], tmp[i][2], tmp[i][3], b0,b1,b2,b3 );
     }
     for( int i = 0; i < 4; i++ )
@@ -369,6 +373,7 @@ static int x264_pixel_sa8d_8x8( pixel *pix1, intptr_t i_pix1, pixel *pix2, intpt
     return (sum+2)>>2;
 }
 
+//浅看
 static int x264_pixel_sa8d_16x16( pixel *pix1, intptr_t i_pix1, pixel *pix2, intptr_t i_pix2 )
 {
     int sum = sa8d_8x8( pix1, i_pix1, pix2, i_pix2 )
@@ -839,6 +844,7 @@ void x264_pixel_init( int cpu, x264_pixel_function_t *pixf )
     pixf->ads[PIXEL_16x8] = x264_pixel_ads2##cpu;\
     pixf->ads[PIXEL_8x8] = x264_pixel_ads1##cpu;
 
+    //初始化像素运算相关的函数指针
     INIT8( sad, );
     INIT8_NAME( sad_aligned, sad, );
     INIT7( sad_x3, );

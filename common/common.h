@@ -743,6 +743,7 @@ struct x264_t
     uint8_t (*deblock_strength[2])[2][8][4];
 
     /* CPU functions dependents */
+    //
     x264_predict_t      predict_16x16[4+3];
     x264_predict8x8_t   predict_8x8[9+3];
     x264_predict_t      predict_4x4[9+3];
